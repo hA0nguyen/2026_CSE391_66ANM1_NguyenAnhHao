@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Bảng Điểm Sinh Viên</title>
+
+<style>
+
+body{
+    font-family: Arial;
+    margin: 30px;
+}
+
+table{
+    border-collapse: collapse;
+    width: 700px;
+    margin-top:20px;
+}
+
+th, td{
+    border:1px solid #ccc;
+    padding:8px;
+    text-align:center;
+}
+
+th{
+    background:#f0f0f0;
+    cursor:pointer;
+}
+
+.low-score{
+    background:yellow;
+}
+
+.controls{
+    margin-top:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>Quản lý điểm sinh viên</h2>
+
+<input id="name" placeholder="Họ tên">
+<input id="score" placeholder="Điểm (0-10)">
+<button id="addBtn">Thêm</button>
+
+<div class="controls">
+
+<input id="search" placeholder="Tìm kiếm tên...">
+
+<select id="filterRank">
+<option value="all">Tất cả</option>
+<option value="Giỏi">Giỏi</option>
+<option value="Khá">Khá</option>
+<option value="Trung bình">Trung bình</option>
+<option value="Yếu">Yếu</option>
+</select>
+
+</div>
+
+<table>
+
+<thead>
+
+<tr>
+<th>STT</th>
+<th>Họ tên</th>
+<th id="scoreHeader">Điểm</th>
+<th>Xếp loại</th>
+<th>Thao tác</th>
+</tr>
+
+</thead>
+
+<tbody id="tableBody"></tbody>
+
+</table>
+
+<p id="stats"></p>
+
+<script>
+
+let students = []
+let filteredStudents = []
+
+let sortDirection = null // asc | desc
+
+function getRank(score){
+
+    if(score >= 8.5) return "Giỏi"
+    if(score >= 7) return "Khá"
+    if(score >= 5) return "Trung bình"
+    return "Yếu"
+
+}
+
+function renderTable(){
+
+    const tbody = document.getElementById("tableBody")
+    tbody.innerHTML = ""
+
+    if(filteredStudents.length === 0){
+
+        tbody.innerHTML =
+        `<tr>
+        <td colspan="5">Không có kết quả</td>
+        </tr>`
+
+        return
+    }
+
+    let total = 0
+
+    filteredStudents.forEach((s,index)=>{
+
+        total += s.score
+
+        let tr = document.createElement("tr")
+
+        if(s.score < 5){
+            tr.classList.add("low-score")
+        }
+
+        tr.innerHTML = `
+        <td>${index+1}</td>
+        <td>${s.name}</td>
+        <td>${s.score}</td>
+        <td>${getRank(s.score)}</td>
+        <td>
+        <button class="deleteBtn" data-name="${s.name}" data-score="${s.score}">
+        Xóa
+        </button>
+        </td>
+        `
+
+        tbody.appendChild(tr)
+
+    })
+
+    const avg = students.length
+        ? (students.reduce((a,b)=>a+b.score,0)/students.length).toFixed(2)
+        : 0
+
+    document.getElementById("stats").innerText =
+    `Tổng sinh viên: ${students.length} | Điểm trung bình: ${avg}`
+
+}
+
+function applyFilters(){
+
+    const keyword =
+    document.getElementById("search").value.toLowerCase()
+
+    const rankFilter =
+    document.getElementById("filterRank").value
+
+    filteredStudents = students.filter(s=>{
+
+        const matchName =
+        s.name.toLowerCase().includes(keyword)
+
+        const rank = getRank(s.score)
+
+        const matchRank =
+        rankFilter === "all" || rank === rankFilter
+
+        return matchName && matchRank
+
+    })
+
+    if(sortDirection === "asc"){
+
+        filteredStudents.sort((a,b)=>a.score-b.score)
+
+    }
+    else if(sortDirection === "desc"){
+
+        filteredStudents.sort((a,b)=>b.score-a.score)
+
+    }
+
+    updateSortIcon()
+
+    renderTable()
+
+}
+
+function updateSortIcon(){
+
+    const header = document.getElementById("scoreHeader")
+
+    if(sortDirection === "asc"){
+        header.innerText = "Điểm ▲"
+    }
+    else if(sortDirection === "desc"){
+        header.innerText = "Điểm ▼"
+    }
+    else{
+        header.innerText = "Điểm"
+    }
+
+}
+
+function addStudent(){
+
+    const nameInput = document.getElementById("name")
+    const scoreInput = document.getElementById("score")
+
+    const name = nameInput.value.trim()
+    const score = parseFloat(scoreInput.value)
+
+    if(name === ""){
+        alert("Họ tên không được trống")
+        return
+    }
+
+    if(isNaN(score) || score < 0 || score > 10){
+        alert("Điểm phải từ 0-10")
+        return
+    }
+
+    students.push({
+        name,
+        score
+    })
+
+    nameInput.value = ""
+    scoreInput.value = ""
+
+    nameInput.focus()
+
+    applyFilters()
+
+}
+
+document.getElementById("addBtn")
+.addEventListener("click", addStudent)
+
+document.getElementById("score")
+.addEventListener("keypress", e=>{
+
+    if(e.key === "Enter"){
+        addStudent()
+    }
+
+})
+
+document.getElementById("search")
+.addEventListener("input", applyFilters)
+
+document.getElementById("filterRank")
+.addEventListener("change", applyFilters)
+
+document.getElementById("scoreHeader")
+.addEventListener("click", ()=>{
+
+    if(sortDirection === null){
+        sortDirection = "asc"
+    }
+    else if(sortDirection === "asc"){
+        sortDirection = "desc"
+    }
+    else{
+        sortDirection = "asc"
+    }
+
+    applyFilters()
+
+})
+
+document.getElementById("tableBody")
+.addEventListener("click", e=>{
+
+    if(e.target.classList.contains("deleteBtn")){
+
+        const name = e.target.dataset.name
+        const score = Number(e.target.dataset.score)
+
+        students = students.filter(
+            s=> !(s.name===name && s.score===score)
+        )
+
+        applyFilters()
+
+    }
+
+})
+
+applyFilters()
+
+</script>
+
+</body>
+</html>
